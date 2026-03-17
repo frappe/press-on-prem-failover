@@ -3,10 +3,20 @@ import logging
 import os
 import shlex
 import subprocess
+from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
 REQUIRED_SERVICES = ["docker", "mysql", "nginx"]
-BENCHES_DIRECTORY = "/Users/aradhyatripathi/fc"
+BENCHES_DIRECTORY = "/home/frappe/benches"
+
+
+@dataclass
+class ServerStatus:
+    services: dict[str, bool]
+    benches: dict[str, str]
+    malformed_benches: list[str]
+    bench_ok: bool
+    status: str
 
 
 def execute(cmd: str, raises: bool = True, timeout: int = 5) -> str | None:
@@ -48,9 +58,22 @@ def is_service_active(service: str) -> bool:
     return execute(f"systemctl is-active {service}", raises=False) == "active"
 
 
-def active_benches(benches_directory: str) -> dict[str, str]:
-    """Return a dict of bench_name -> docker_image for all valid active benches."""
+def active_images() -> list[str]:  # was `int`, wrong
+    """Return list of docker images present on the host."""
+    output = execute("docker images --format '{{.Repository}}:{{.Tag}}'")
+    return output.splitlines() if output else []
+
+
+def active_benches(benches_directory: str) -> tuple[dict[str, str], list[str]]:
+    """Return (valid_benches, malformed_benches).
+
+    A bench is malformed if it's missing required files or its docker image
+    is not present on the host. Only valid benches will be started.
+    """
     result = {}
+    malformed = []
+    images = active_images()
+
     for entry in os.listdir(benches_directory):
         full_path = os.path.join(benches_directory, entry)
 
@@ -66,25 +89,35 @@ def active_benches(benches_directory: str) -> dict[str, str]:
         ]
 
         if not all(os.path.exists(os.path.join(full_path, p)) for p in required_paths):
+            malformed.append(entry)
             continue
 
         config_path = os.path.join(full_path, "config.json")
         with open(config_path) as f:
             image = json.load(f).get("docker_image")
 
+        if not image or image not in images:
+            malformed.append(entry)
+            continue
+
         result[entry] = image
 
-    return result
-
-
-def active_images() -> int:
-    """Check docker images present"""
-    output = execute("docker images --format '{{.Repository}}:{{.Tag}}'")
-    return output.splitlines() if output else []
+    return result, malformed
 
 
 def has_accessible_benches_dir(benches_directory: str) -> bool:
-    """Check if file is present and user has r/w access."""
+    """Check if directory is present and user has r/w access."""
     return os.path.exists(benches_directory) and os.access(
         benches_directory, os.R_OK | os.W_OK
     )
+
+
+def check_server_status() -> ServerStatus:
+    """Check the status of required services and benches."""
+    services = {s: is_service_active(s) for s in REQUIRED_SERVICES}
+    bench_ok = has_accessible_benches_dir(BENCHES_DIRECTORY)
+    benches, malformed_benches = (
+        active_benches(BENCHES_DIRECTORY) if bench_ok else ({}, [])
+    )
+    status = "ok" if all(services.values()) and bench_ok and benches else "error"
+    return ServerStatus(services, benches, malformed_benches, bench_ok, status)
