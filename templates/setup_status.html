@@ -13,7 +13,7 @@
         <p class="text-muted mb-0">System service health for failover readiness</p>
       </div>
       <a href="{{ url_for('failover_setup_status') }}"
-         class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-2">
+        class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-2">
         <i class="bi bi-arrow-repeat"></i>
         <span>Refresh</span>
       </a>
@@ -38,8 +38,11 @@
         <div class="text-danger-emphasis">
           {% set problems = [] %}
           {% if not bench_ok %}{% set _ = problems.append("bench directory inaccessible") %}{% endif %}
-          {% for s, active in services.items() %}{% if not active %}{% set _ = problems.append(s ~ " inactive") %}{% endif %}{% endfor %}
-          {% if missing_images %}{% set _ = problems.append(missing_images | length ~ " bench image(s) missing") %}{% endif %}
+          {% for s, active in services.items() %}{% if not active %}{% set _ = problems.append(s ~ " inactive") %}{%
+          endif %}{% endfor %}
+          {% if malformed_benches %}{% set _ = problems.append(malformed_benches | length ~ " bench(es) malformed or
+          missing image") %}{% endif %}
+          {% if not benches and bench_ok %}{% set _ = problems.append("no startable benches found") %}{% endif %}
           {{ problems | join(", ") | capitalize }}.
         </div>
       </div>
@@ -92,55 +95,59 @@
         </li>
 
         {% if bench_ok %}
-          {% if benches %}
-            {% for bench, image in benches.items() %}
-            {% set image_missing = bench in missing_images %}
-            <li class="list-group-item py-3">
-              <div class="d-flex align-items-center justify-content-between">
-                <div>
-                  <div class="font-monospace small fw-semibold">{{ bench }}</div>
-                  <div class="text-muted small mt-1">
-                    <i class="bi bi-box"></i>
-                    {{ image if image else "No image configured" }}
-                  </div>
-                </div>
-                {% if image_missing %}
-                <span class="badge bg-warning-subtle text-warning d-inline-flex align-items-center gap-1 px-3 py-2">
-                  <i class="bi bi-exclamation-circle"></i> Image missing
-                </span>
-                {% else %}
-                <span class="badge bg-success-subtle text-success d-inline-flex align-items-center gap-1 px-3 py-2">
-                  <i class="bi bi-check-circle"></i> Ready
-                </span>
-                {% endif %}
+
+        {% for bench, image in benches.items() %}
+        <li class="list-group-item py-3">
+          <div class="d-flex align-items-center justify-content-between">
+            <div>
+              <div class="font-monospace small fw-semibold">{{ bench }}</div>
+              <div class="text-muted small mt-1">
+                <i class="bi bi-box"></i> {{ image }}
               </div>
-            </li>
-            {% endfor %}
-          {% else %}
-          <li class="list-group-item py-3 text-muted small d-flex align-items-center gap-2">
-            <i class="bi bi-info-circle"></i> No active benches found in this directory.
-          </li>
-          {% endif %}
+            </div>
+            <span class="badge bg-success-subtle text-success d-inline-flex align-items-center gap-1 px-3 py-2">
+              <i class="bi bi-check-circle"></i> Ready
+            </span>
+          </div>
+        </li>
+        {% endfor %}
+
+        {% for bench in malformed_benches %}
+        <li class="list-group-item py-3">
+          <div class="d-flex align-items-center justify-content-between">
+            <div>
+              <div class="font-monospace small fw-semibold">{{ bench }}</div>
+              <div class="text-muted small mt-1">
+                <i class="bi bi-exclamation-octagon"></i> Missing required files or image — will not be started
+              </div>
+            </div>
+            <span class="badge bg-danger-subtle text-danger d-inline-flex align-items-center gap-1 px-3 py-2">
+              <i class="bi bi-file-earmark-x"></i> Malformed
+            </span>
+          </div>
+        </li>
+        {% endfor %}
+
+        {% if not benches and not malformed_benches %}
+        <li class="list-group-item py-3 text-muted small d-flex align-items-center gap-2">
+          <i class="bi bi-info-circle"></i> No benches found in this directory.
+        </li>
+        {% endif %}
+
         {% endif %}
 
       </ul>
     </div>
 
-    <!-- Start Benches Button -->
     <div class="d-flex justify-content-end mb-4">
       {% if status == "ok" %}
-      <a href="{{ url_for('start_benches_page') }}"
-         class="btn btn-primary d-inline-flex align-items-center gap-2">
+      <a href="{{ url_for('start_benches_page') }}" class="btn btn-primary d-inline-flex align-items-center gap-2">
         <i class="bi bi-play-fill"></i>
         Start Benches
       </a>
       {% else %}
-      <span
-        data-bs-toggle="tooltip"
-        data-bs-placement="left"
-        title="Resolve all setup issues before starting benches">
-        <a class="btn btn-primary d-inline-flex align-items-center gap-2 disabled"
-           aria-disabled="true">
+      <span data-bs-toggle="tooltip" data-bs-placement="left" title="Resolve all setup issues before starting benches">
+        <a class="btn btn-primary d-inline-flex align-items-center gap-2 disabled" aria-disabled="true">
           <i class="bi bi-play-fill"></i>
           Start Benches
         </a>
@@ -152,7 +159,6 @@
 </div>
 
 <script>
-  // init Bootstrap tooltips
   document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
     new bootstrap.Tooltip(el)
   })

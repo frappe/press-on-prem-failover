@@ -7,11 +7,7 @@ from redis import Redis
 from rq import Queue
 from rq.exceptions import NoSuchJobError
 from rq.job import Job
-from utils.setup_prerequisite import (
-    BENCHES_DIRECTORY,
-    MissingBenchFilesError,
-    check_server_status,
-)
+from utils.setup_prerequisite import BENCHES_DIRECTORY, check_server_status
 
 
 def configure_logging(level: int = logging.INFO) -> None:
@@ -37,11 +33,6 @@ def page_not_found(_):
     return render_template("404.html"), 404
 
 
-@app.errorhandler(MissingBenchFilesError)
-def handle_missing_bench_files(e):
-    return render_template("missing_bench_files.html", message=str(e)), 500
-
-
 @app.route("/setup-status")
 def failover_setup_status():
     s = check_server_status()
@@ -52,8 +43,7 @@ def failover_setup_status():
         bench_dir=BENCHES_DIRECTORY,
         bench_ok=s.bench_ok,
         benches=s.benches,
-        images=s.images,
-        missing_images=s.missing_images,
+        malformed_benches=s.malformed_benches,  # new
     ), 200 if s.status == "ok" else 503
 
 
@@ -64,7 +54,6 @@ def start_benches_page():
         "start_benches.html",
         status=s.status,
         benches=s.benches,
-        missing_images=s.missing_images,
     )
 
 

@@ -24,7 +24,7 @@
       <div>
         <div class="fw-semibold">Failover setup not ready</div>
         <div class="text-danger-emphasis">
-          Benches cannot be started until all services and images are ready.
+          Benches cannot be started until all services are running and all bench files are valid.
         </div>
       </div>
     </div>
@@ -36,31 +36,23 @@
         <h6 class="mb-0 fw-semibold">Benches to Start</h6>
       </div>
       <ul class="list-group list-group-flush">
-        {% if benches %}
-          {% for bench, image in benches.items() %}
-          <li class="list-group-item d-flex align-items-center justify-content-between py-3">
-            <div>
-              <div class="font-monospace fw-semibold small">{{ bench }}</div>
-              <div class="text-muted small mt-1">
-                <i class="bi bi-box"></i> {{ image }}
-              </div>
+        {% for bench, image in benches.items() %}
+        <li class="list-group-item d-flex align-items-center justify-content-between py-3">
+          <div>
+            <div class="font-monospace fw-semibold small">{{ bench }}</div>
+            <div class="text-muted small mt-1">
+              <i class="bi bi-box"></i> {{ image }}
             </div>
-            {% if bench in missing_images %}
-            <span class="badge bg-warning-subtle text-warning d-inline-flex align-items-center gap-1 px-3 py-2">
-              <i class="bi bi-exclamation-circle"></i> Image Missing
-            </span>
-            {% else %}
-            <span class="badge bg-success-subtle text-success d-inline-flex align-items-center gap-1 px-3 py-2">
-              <i class="bi bi-check-circle"></i> Ready
-            </span>
-            {% endif %}
-          </li>
-          {% endfor %}
+          </div>
+          <span class="badge bg-success-subtle text-success d-inline-flex align-items-center gap-1 px-3 py-2">
+            <i class="bi bi-check-circle"></i> Ready
+          </span>
+        </li>
         {% else %}
         <li class="list-group-item text-muted small py-3 d-flex align-items-center gap-2">
           <i class="bi bi-info-circle"></i> No benches available.
         </li>
-        {% endif %}
+        {% endfor %}
       </ul>
     </div>
 
