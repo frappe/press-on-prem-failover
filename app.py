@@ -2,7 +2,7 @@ import logging
 import sys
 
 from flask import Flask, render_template
-from jobs import start_benches_in_background
+from jobs import initialize_and_start_benches
 from redis import Redis
 from rq import Queue
 from rq.exceptions import NoSuchJobError
@@ -71,8 +71,8 @@ def start_benches_api():
         pass
 
     queue.enqueue(
-        start_benches_in_background,
-        benches=list(s.benches.keys()),
+        initialize_and_start_benches,
+        benches=s.benches,
         job_id=START_BENCHES_JOB_ID,
     )
     return {
