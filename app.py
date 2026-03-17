@@ -2,13 +2,14 @@ import logging
 import sys
 
 from flask import Flask, render_template
+from jobs import start_benches_in_background
+from redis import Redis
+from rq import Queue
+from rq.exceptions import NoSuchJobError
+from rq.job import Job
 from utils.setup_prerequisite import (
     BENCHES_DIRECTORY,
-    REQUIRED_SERVICES,
-    has_accessible_benches_dir,
-    active_benches,
-    active_images,
-    is_service_active,
+    check_server_status,
 )
 
 
@@ -26,44 +27,64 @@ def configure_logging(level: int = logging.INFO) -> None:
 configure_logging()
 
 app = Flask(__name__)
+queue = Queue(connection=Redis.from_url("redis://localhost:6379/0"))
+START_BENCHES_JOB_ID = "start-benches"
 
 
-@app.route("/")
-def hello_world():
-    return "Hello, World! This is the Press On-Prem Failover application."
-
-
-@app.route("/start")
-def start_failover():
-    return "Starting failover process to on-premises server"
+@app.errorhandler(404)
+def page_not_found(_):
+    return render_template("404.html"), 404
 
 
 @app.route("/setup-status")
 def failover_setup_status():
-    services = {s: is_service_active(s) for s in REQUIRED_SERVICES}
-    all_active_services = all(services.values())
-    bench_ok = has_accessible_benches_dir(BENCHES_DIRECTORY)
-    benches = active_benches(BENCHES_DIRECTORY) if bench_ok else {}
-    images = active_images()
-
-    missing_images = {
-        bench: image for bench, image in benches.items() if image not in images
-    }
-
-    status = (
-        "ok" if all_active_services and bench_ok and not missing_images else "error"
-    )
-
+    s = check_server_status()
     return render_template(
         "setup_status.html",
-        status=status,
-        services=services,
+        status=s.status,
+        services=s.services,
         bench_dir=BENCHES_DIRECTORY,
-        bench_ok=bench_ok,
-        benches=benches,
-        images=images,
-        missing_images=missing_images,
-    ), 200 if status == "ok" else 503
+        bench_ok=s.bench_ok,
+        benches=s.benches,
+        images=s.images,
+        missing_images=s.missing_images,
+    ), 200 if s.status == "ok" else 503
+
+
+@app.route("/start-benches")
+def start_benches_page():
+    s = check_server_status()
+    return render_template(
+        "start_benches.html",
+        status=s.status,
+        benches=s.benches,
+        missing_images=s.missing_images,
+    )
+
+
+@app.route("/api/start-benches", methods=["POST"])
+def start_benches_api():
+    s = check_server_status()
+    if s.status != "ok":
+        return {"error": True, "reason": "setup not ready"}, 400
+
+    try:
+        existing_job = Job.fetch(START_BENCHES_JOB_ID, connection=queue.connection)
+        if existing_job.get_status() in ("queued", "started"):
+            return {"status": "already running"}, 202
+    except NoSuchJobError:
+        pass
+
+    queue.enqueue(
+        start_benches_in_background,
+        benches=list(s.benches.keys()),
+        job_id=START_BENCHES_JOB_ID,
+    )
+    return {
+        "status": "queued",
+        "benches": list(s.benches.keys()),
+        "job_id": START_BENCHES_JOB_ID,
+    }, 202
 
 
 if __name__ == "__main__":
