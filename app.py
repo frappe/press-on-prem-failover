@@ -9,6 +9,7 @@ from rq.exceptions import NoSuchJobError
 from rq.job import Job
 from utils.setup_prerequisite import (
     BENCHES_DIRECTORY,
+    MissingBenchFilesError,
     check_server_status,
 )
 
@@ -34,6 +35,11 @@ START_BENCHES_JOB_ID = "start-benches"
 @app.errorhandler(404)
 def page_not_found(_):
     return render_template("404.html"), 404
+
+
+@app.errorhandler(MissingBenchFilesError)
+def handle_missing_bench_files(e):
+    return render_template("missing_bench_files.html", message=str(e)), 500
 
 
 @app.route("/setup-status")

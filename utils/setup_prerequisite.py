@@ -20,6 +20,10 @@ class ServerStatus:
     status: str
 
 
+class MissingBenchFilesError(Exception):
+    pass
+
+
 def execute(cmd: str, raises: bool = True, timeout: int = 5) -> str | None:
     """Execute a shell command and return the output"""
     try:
@@ -77,7 +81,9 @@ def active_benches(benches_directory: str) -> dict[str, str]:
         ]
 
         if not all(os.path.exists(os.path.join(full_path, p)) for p in required_paths):
-            continue
+            raise MissingBenchFilesError(
+                f"Bench {entry} is missing required files or directories."
+            )
 
         config_path = os.path.join(full_path, "config.json")
         with open(config_path) as f:
