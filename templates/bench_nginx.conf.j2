@@ -1,0 +1,49 @@
+# --- Upstreams for Bench: {{ bench_name }} ---
+upstream {{ bench_name }}-web-server {
+    server 127.0.0.1:{{ web_port }} fail_timeout=0;
+}
+
+upstream {{ bench_name }}-socketio-server {
+    server 127.0.0.1:{{ socketio_port }} fail_timeout=0;
+}
+
+{% for site_name, site_port in sites.items() %}
+# --- Server Block for {{ site_name }} ---
+server {
+    listen {{ site_port }};
+    server_name {{ site_name }};
+    
+    root {{ benches_directory }}/{{ bench_name }}/sites;
+
+    # Explicitly set the site name
+    set $site_name "{{ site_name }}";
+
+    location /assets {
+        try_files $uri =404;
+        add_header Cache-Control "max-age=31536000, immutable";
+    }
+
+    location /socket.io {
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header X-Frappe-Site-Name $site_name;
+        proxy_set_header Host $host;
+        proxy_pass http://{{ bench_name }}-socketio-server;
+    }
+
+    location / {
+        try_files /$site_name/public/$uri @webserver;
+    }
+
+    location @webserver {
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Frappe-Site-Name $site_name;
+        proxy_set_header Host $host;
+        proxy_set_header X-Use-X-Accel-Redirect True;
+        proxy_read_timeout 120;
+        proxy_redirect off;
+        proxy_pass http://{{ bench_name }}-web-server;
+    }
+}
+{% endfor %}
