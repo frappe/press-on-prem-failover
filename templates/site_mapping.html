@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block title %}Site Mapping{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+
+        <!-- Header -->
+        <div class="d-flex align-items-center justify-content-between mb-4">
+            <div>
+                <h2 class="mb-1">Site Mapping</h2>
+                <p class="text-muted mb-0">Port assignments for all configured sites</p>
+            </div>
+            <a href="{{ url_for('failover_setup_status') }}"
+                class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-2">
+                <i class="bi bi-arrow-left"></i>
+                Back to Setup
+            </a>
+        </div>
+
+        <!-- Job Status Card -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header border-bottom py-3 d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-activity"></i>
+                    <h6 class="mb-0 fw-semibold">Bench Start Job</h6>
+                </div>
+                {% if bench_job_status not in ("finished", "failed") %}
+                <button id="refreshBtn" class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-2">
+                    <i class="bi bi-arrow-repeat"></i>
+                    Check Status
+                </button>
+                {% endif %}
+            </div>
+            <div class="card-body py-3">
+                {% if bench_job_status in ("queued", "started") %}
+                <div class="d-flex align-items-center gap-3">
+                    <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                    <div>
+                        <div class="fw-semibold">
+                            {{ "Queued" if bench_job_status == "queued" else "Running" }}
+                        </div>
+                        <div class="text-muted small">
+                            Benches are being started. Click "Check Status" to refresh.
+                        </div>
+                    </div>
+                </div>
+
+                {% elif bench_job_status == "finished" %}
+                <div class="d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center gap-3">
+                        <i class="bi bi-check-circle-fill text-success fs-4"></i>
+                        <div>
+                            <div class="fw-semibold">Completed</div>
+                            <div class="text-muted small">All benches have been started successfully.</div>
+                        </div>
+                    </div>
+                    <a href="{{ url_for('failover_setup_status') }}"
+                        class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-2">
+                        <i class="bi bi-arrow-repeat"></i>
+                        Retrigger
+                    </a>
+                </div>
+
+                {% elif bench_job_status == "failed" %}
+                <div class="d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center gap-3">
+                        <i class="bi bi-x-circle-fill text-danger fs-4"></i>
+                        <div>
+                            <div class="fw-semibold">Failed</div>
+                            <div class="text-muted small">The bench start job encountered an error.</div>
+                        </div>
+                    </div>
+                    <a href="{{ url_for('failover_setup_status') }}"
+                        class="btn btn-sm btn-outline-danger d-inline-flex align-items-center gap-2">
+                        <i class="bi bi-arrow-repeat"></i>
+                        Retrigger
+                    </a>
+                </div>
+
+                {% else %}
+                <div class="d-flex align-items-center gap-3">
+                    <i class="bi bi-dash-circle text-muted fs-4"></i>
+                    <div>
+                        <div class="fw-semibold">Not Started</div>
+                        <div class="text-muted small">No bench start job has been run yet.</div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Site Mapping Table -->
+        {% if bench_job_status not in ("queued", "started") and nginx_config %}
+        {% for bench_name, bench_data in nginx_config.items() %}
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header border-bottom py-3 d-flex align-items-center gap-2">
+                <i class="bi bi-server"></i>
+                <h6 class="mb-0 fw-semibold font-monospace">{{ bench_name }}</h6>
+            </div>
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th class="ps-3 py-3 text-muted small fw-semibold">Site</th>
+                        <th class="pe-3 py-3 text-muted small fw-semibold text-end">Port</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for site, port in bench_data.sites.items() %}
+                    <tr>
+                        <td class="ps-3 py-3 font-monospace small">{{ site }}</td>
+                        <td class="pe-3 py-3 text-end">
+                            <span class="badge bg-secondary-subtle text-secondary font-monospace px-3 py-2">
+                                {{ port }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endfor %}
+
+        {% elif bench_job_status in ("queued", "started") %}
+        <div class="alert alert-info d-flex gap-2 align-items-center">
+            <i class="bi bi-info-circle"></i>
+            Site mapping will be shown here once the bench start job completes.
+        </div>
+
+        {% elif not nginx_config %}
+        <div class="alert alert-secondary d-flex gap-2 align-items-center">
+            <i class="bi bi-info-circle"></i>
+            No nginx configuration found yet.
+        </div>
+        {% endif %}
+
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/site_mapping.js') }}" data-job-status="{{ bench_job_status }}">
+</script>
+{% endblock %}

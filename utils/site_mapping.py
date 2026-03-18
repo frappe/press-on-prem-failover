@@ -1,3 +1,4 @@
+import json
 import os
 
 from utils.types import BenchSiteMapping
@@ -48,3 +49,16 @@ def get_port_mapping_for_sites(
             result[bench] = {"sites": sites}
 
     return result
+
+
+def get_nginx_config(job_status: str) -> dict:
+    """Return nginx config unless a job is currently running (it'll replace it anyway)."""
+    if job_status in ("started", "queued"):
+        return {}
+
+    nginx_config_path = "nginx_configs.json"
+    if os.path.exists(nginx_config_path):
+        with open(nginx_config_path) as f:
+            return json.load(f)
+
+    return {}
