@@ -7,7 +7,11 @@ from redis import Redis
 from rq import Queue
 from rq.exceptions import NoSuchJobError
 from rq.job import Job
-from utils.setup_prerequisite import BENCHES_DIRECTORY, check_server_status
+from utils.setup_prerequisite import (
+    BENCHES_DIRECTORY,
+    START_BENCHES_JOB_ID,
+    check_server_status,
+)
 from utils.site_mapping import get_nginx_config
 
 
@@ -26,7 +30,6 @@ configure_logging()
 
 app = Flask(__name__)
 queue = Queue(connection=Redis.from_url("redis://localhost:6379/0"))
-START_BENCHES_JOB_ID = "start-benches"
 
 
 

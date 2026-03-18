@@ -12,7 +12,8 @@ REQUIRED_SERVICES = ["docker", "nginx"]
 BENCHES_DIRECTORY = "/root/frappe-cloud/benches/home/frappe/benches"
 DATABASE_CONTAINER_NAME = "fc-dr-db-replica"
 DOCKER_NETWORK_NAME = "on_prem_replica_net"
-
+START_BENCHES_JOB_ID = "start-benches"
+DATABASE_BASE_DIRECTORY = "/root/frappe-cloud/database"
 
 @dataclass
 class ServerStatus:

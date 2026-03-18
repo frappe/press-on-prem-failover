@@ -4,6 +4,7 @@ import os
 from jinja2 import Environment, FileSystemLoader
 from utils.setup_prerequisite import (
     BENCHES_DIRECTORY,
+    DATABASE_BASE_DIRECTORY,
     DATABASE_CONTAINER_NAME,
     DOCKER_NETWORK_NAME,
     execute,
@@ -20,6 +21,14 @@ def bench_container_exists(bench_name: str) -> bool:
     )
     return bench_name in result.splitlines()
 
+def generate_base_nginx_config():
+    """Generate the base nginx config that includes bench-specific configs"""
+    template_env = Environment(loader=FileSystemLoader("templates"))
+    rendered_config = template_env.get_template("nginx.conf.j2").render(
+        BENCHES_DIRECTORY=BENCHES_DIRECTORY
+    )
+    with open("/etc/nginx/nginx.conf", "w") as config_file:
+        config_file.write(rendered_config)
 
 def generate_bench_nginx_configs(benches: dict[str, BenchInfo]):
     """Generate nginx config snippets for each bench and its sites"""
@@ -66,7 +75,7 @@ def deploy_bench_container(bench_name: str, port_offset: int, image: str) -> Non
     execute(command, timeout=300)
 
 
-def update_database_host(bench_name: str):
+def update_database_host(bench_name: str, container_ip: str):
     """Change database host in common_site_config.json to point to the database container's private IP"""
     common_site_config_path = (
         f"{BENCHES_DIRECTORY}/{bench_name}/sites/common_site_config.json"
@@ -78,22 +87,46 @@ def update_database_host(bench_name: str):
     with open(common_site_config_path, "r") as f:
         config = json.load(f)
 
-    format = f"{{{{.NetworkSettings.Networks.{DOCKER_NETWORK_NAME}.IPAddress}}}}"
-    config["db_host"] = execute(
-        f"docker inspect --format {format} {DATABASE_CONTAINER_NAME}"
-    ).strip()
+    config["db_host"] = container_ip
 
     with open(common_site_config_path, "w") as f:
         json.dump(config, f, indent=4)
+    
+
+def remove_and_run_database_container(container_ip: str):
+    """Remove and run the database container to remove readonly flag"""
+    # Remove database container
+    execute(f"docker rm -f {DATABASE_CONTAINER_NAME}", timeout=30)
+    command = (
+        "docker run -d "
+        f"--name {DATABASE_CONTAINER_NAME} "
+        "--restart always "
+        "--user root "
+        f"--network {DOCKER_NETWORK_NAME} "
+        f"--ip {container_ip} "  # The one we just fetched for the bench to ensure it remains the same
+        f"-v {DATABASE_BASE_DIRECTORY}/var/lib/mysql:/var/lib/mysql "
+        "mariadb:10.6 "
+        "--server-id=9999 "
+        "--bind-address=0.0.0.0 "
+        "--innodb-file-per-table=1 "
+        "--skip-slave-start"
+    )
+    # Run the database without the readonly
+    execute(command, timeout=300)
 
 
 def initialize_and_start_benches(benches: dict[str, BenchInfo]):
     """Extract assets from image and start all available benches in the background"""
+    generate_base_nginx_config()
     generate_bench_nginx_configs(benches=benches)
+    
+    format = f"{{{{.NetworkSettings.Networks.{DOCKER_NETWORK_NAME}.IPAddress}}}}"
+    container_ip = execute(
+        f"docker inspect --format {format} {DATABASE_CONTAINER_NAME}"
+    ).strip()
 
     for bench_name, bench_info in benches.items():
-        update_database_host(bench_name)
-
+        update_database_host(bench_name, container_ip)
         execute(
             "docker run -uroot --rm --net none "
             f"-v {BENCHES_DIRECTORY}/{bench_name}/sites/assets:/home/frappe/frappe-bench/sitesmount "
@@ -101,6 +134,7 @@ def initialize_and_start_benches(benches: dict[str, BenchInfo]):
             "bash -c 'cp -LR sites/assets/. sitesmount && chown -R frappe:frappe sitesmount'",
             timeout=500,
         )
+
         if bench_container_exists(bench_name):
             execute(f"docker start {bench_name}", raises=False, timeout=500)
         else:
@@ -110,3 +144,6 @@ def initialize_and_start_benches(benches: dict[str, BenchInfo]):
             deploy_bench_container(
                 bench_name, port_offset=port_offset, image=bench_info["image"]
             )
+
+    remove_and_run_database_container(container_ip)
+    execute("systemctl reload nginx", timeout=30)
