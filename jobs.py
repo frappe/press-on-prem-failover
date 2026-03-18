@@ -96,7 +96,7 @@ def initialize_and_start_benches(benches: dict[str, BenchInfo]):
 
         execute(
             "docker run -uroot --rm --net none "
-            f"-v /home/frappe/benches/{bench_name}/sites/assets:/home/frappe/frappe-bench/sitesmount "
+            f"-v {BENCHES_DIRECTORY}/{bench_name}/sites/assets:/home/frappe/frappe-bench/sitesmount "
             f"{bench_info['image']} "
             "bash -c 'cp -LR sites/assets/. sitesmount && chown -R frappe:frappe sitesmount'",
             timeout=500,
