@@ -20,6 +20,11 @@ def generate_bench_nginx_configs(benches: dict[str, BenchInfo]):
         with open(config_path, "w") as config_file:
             config_file.write(rendered_config)
 
+    with open("nginx_configs.json", "w") as f:
+        import json
+
+        json.dump(mappings, f, indent=4)
+
 
 def deploy_bench_container(bench_name: str, port_offset: int, image: str) -> None:
     """Run a command inside the bench's Docker container"""

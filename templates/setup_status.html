@@ -139,25 +139,26 @@
       </ul>
     </div>
 
+    <!-- Start Benches Button -->
     <div class="d-flex justify-content-end mb-4">
       {% if status == "ok" %}
-      <a href="{{ url_for('start_benches_page') }}" class="btn btn-primary d-inline-flex align-items-center gap-2">
+      <button id="startBtn" class="btn btn-primary d-inline-flex align-items-center gap-2">
         <i class="bi bi-play-fill"></i>
-        Configure Site And Start Benches
-      </a>
+        Configure Sites And Start Benches
+      </button>
       {% else %}
       <span data-bs-toggle="tooltip" data-bs-placement="left" title="Resolve all setup issues before starting benches">
-        <a class="btn btn-primary d-inline-flex align-items-center gap-2 disabled" aria-disabled="true">
+        <button class="btn btn-primary d-inline-flex align-items-center gap-2" disabled>
           <i class="bi bi-play-fill"></i>
-          Configure Site And Start Benches
-        </a>
+          Configure Sites And Start Benches
+        </button>
       </span>
       {% endif %}
     </div>
 
   </div>
 </div>
-
+<script src="{{ url_for('static', filename='js/setup_status.js') }}"></script>
 <script>
   document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
     new bootstrap.Tooltip(el)
