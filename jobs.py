@@ -1,7 +1,24 @@
+import json
+import os
+
 from jinja2 import Environment, FileSystemLoader
-from utils.setup_prerequisite import BENCHES_DIRECTORY, execute
+from utils.setup_prerequisite import (
+    BENCHES_DIRECTORY,
+    DATABASE_CONTAINER_NAME,
+    DOCKER_NETWORK_NAME,
+    execute,
+)
 from utils.site_mapping import get_port_mapping_for_sites
 from utils.types import BenchInfo
+
+
+def bench_container_exists(bench_name: str) -> bool:
+    """Check if a Docker container for the bench already exists"""
+    result = execute(
+        f"docker ps -a --filter name=^{bench_name}$ --format '{{{{.Names}}}}'",
+        timeout=30,
+    )
+    return bench_name in result.splitlines()
 
 
 def generate_bench_nginx_configs(benches: dict[str, BenchInfo]):
@@ -43,18 +60,30 @@ def deploy_bench_container(bench_name: str, port_offset: int, image: str) -> Non
         f"-v {BENCHES_DIRECTORY}/{bench_name}/sites:/home/frappe/frappe-bench/sites "
         f"-v {BENCHES_DIRECTORY}/{bench_name}/logs:/home/frappe/frappe-bench/logs "
         f"-v {BENCHES_DIRECTORY}/{bench_name}/config:/home/frappe/frappe-bench/config "
+        f"--network {DOCKER_NETWORK_NAME} "  # Attach to the same network as the database container for internal communication
         f"--name {bench_name} {image}"
     )
     execute(command, timeout=300)
 
 
-def bench_container_exists(bench_name: str) -> bool:
-    """Check if a Docker container for the bench already exists"""
-    result = execute(
-        f"docker ps -a --filter name=^{bench_name}$ --format '{{{{.Names}}}}'",
-        timeout=30,
+def update_database_host(bench_name: str):
+    """Change database host in common_site_config.json to point to the database container's private IP"""
+    common_site_config_path = (
+        f"{BENCHES_DIRECTORY}/{bench_name}/sites/common_site_config.json"
     )
-    return bench_name in result.splitlines()
+
+    if not os.path.exists(common_site_config_path):
+        return
+
+    with open(common_site_config_path, "r") as f:
+        config = json.load(f)
+
+    config["db_host"] = execute(
+        f"docker inspect -f '{{ .NetworkSettings.Networks.{DOCKER_NETWORK_NAME}.IPAddress }}' {DATABASE_CONTAINER_NAME}"
+    ).strip()
+
+    with open(common_site_config_path, "w") as f:
+        json.dump(config, f, indent=4)
 
 
 def initialize_and_start_benches(benches: dict[str, BenchInfo]):
@@ -62,6 +91,8 @@ def initialize_and_start_benches(benches: dict[str, BenchInfo]):
     generate_bench_nginx_configs(benches=benches)
 
     for bench_name, bench_info in benches.items():
+        update_database_host(bench_name)
+
         execute(
             "docker run -uroot --rm --net none "
             f"-v /home/frappe/benches/{bench_name}/sites/assets:/home/frappe/frappe-bench/sitesmount "

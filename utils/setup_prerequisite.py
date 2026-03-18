@@ -8,8 +8,10 @@ from dataclasses import dataclass
 from utils.types import BenchInfo
 
 logger = logging.getLogger(__name__)
-REQUIRED_SERVICES = ["docker", "mysql", "nginx"]
-BENCHES_DIRECTORY = "/home/frappe/benches"
+REQUIRED_SERVICES = ["docker", "nginx"]
+BENCHES_DIRECTORY = "/root/frappe-cloud/benches/home/frappe/benches"
+DATABASE_CONTAINER_NAME = "fc-dr-db-replica"
+DOCKER_NETWORK_NAME = "on_prem_replica_net"
 
 
 @dataclass
@@ -128,5 +130,18 @@ def check_server_status() -> ServerStatus:
     benches, malformed_benches = (
         active_benches(BENCHES_DIRECTORY) if bench_ok else ({}, [])
     )
-    status = "ok" if all(services.values()) and bench_ok and benches else "error"
+    is_database_container_running = (
+        execute(
+            f"docker ps --filter 'name={DATABASE_CONTAINER_NAME}' --filter 'network={DOCKER_NETWORK_NAME}' --format '{{{{.Names}}}}'"
+        )
+        == DATABASE_CONTAINER_NAME
+    )
+    status = (
+        "ok"
+        if all(services.values())
+        and bench_ok
+        and benches
+        and is_database_container_running
+        else "error"
+    )
     return ServerStatus(services, benches, malformed_benches, bench_ok, status)
