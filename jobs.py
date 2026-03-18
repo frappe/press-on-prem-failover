@@ -21,6 +21,37 @@ def generate_bench_nginx_configs(benches: dict[str, BenchInfo]):
             config_file.write(rendered_config)
 
 
+def deploy_bench_container(bench_name: str, port_offset: int, image: str) -> None:
+    """Run a command inside the bench's Docker container"""
+    webport = 18000 + port_offset
+    socketio_port = 19000 + port_offset
+    metrics_port = 16000 + port_offset
+    redis_port = 13000 + port_offset
+    cache_port = 11000 + port_offset
+    ssh_port = 22000 + port_offset
+
+    command = (
+        f"docker run -d --init -u frappe --restart always --hostname {bench_name} "
+        f"--security-opt seccomp=unconfined "
+        f"-p 127.0.0.1:{webport}:8000 -p 127.0.0.1:{socketio_port}:9000 -p 127.0.0.1:{metrics_port}:8088 "
+        f"-p 0.0.0.0:{redis_port}:13000 -p 0.0.0.0:{cache_port}:11000 -p 0.0.0.0:{ssh_port}:2200 "
+        f"-v {BENCHES_DIRECTORY}/{bench_name}/sites:/home/frappe/frappe-bench/sites "
+        f"-v {BENCHES_DIRECTORY}/{bench_name}/logs:/home/frappe/frappe-bench/logs "
+        f"-v {BENCHES_DIRECTORY}/{bench_name}/config:/home/frappe/frappe-bench/config "
+        f"--name {bench_name} {image}"
+    )
+    execute(command, timeout=300)
+
+
+def bench_container_exists(bench_name: str) -> bool:
+    """Check if a Docker container for the bench already exists"""
+    result = execute(
+        f"docker ps -a --filter name=^{bench_name}$ --format '{{{{.Names}}}}'",
+        timeout=30,
+    )
+    return bench_name in result.splitlines()
+
+
 def initialize_and_start_benches(benches: dict[str, BenchInfo]):
     """Extract assets from image and start all available benches in the background"""
     generate_bench_nginx_configs(benches=benches)
@@ -33,4 +64,12 @@ def initialize_and_start_benches(benches: dict[str, BenchInfo]):
             "bash -c 'cp -LR sites/assets/. sitesmount && chown -R frappe:frappe sitesmount'",
             timeout=500,
         )
-        execute(f"docker start {bench_name}", raises=False, timeout=500)
+        if bench_container_exists(bench_name):
+            execute(f"docker start {bench_name}", raises=False, timeout=500)
+        else:
+            port_offset = (
+                int(bench_info["web_port"]) - 18000
+            )  # We know the starting point of the web ports, so we can calculate the offset for other ports
+            deploy_bench_container(
+                bench_name, port_offset=port_offset, image=bench_info["image"]
+            )
