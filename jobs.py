@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 
 from jinja2 import Environment, FileSystemLoader
@@ -12,6 +13,20 @@ from utils.setup_prerequisite import (
 from utils.site_mapping import get_port_mapping_for_sites
 from utils.types import BenchInfo
 
+logger = logging.getLogger(__name__)
+
+deploy_handler = logging.FileHandler("deployer.log")
+deploy_formatter = logging.Formatter(
+    "%(asctime)s | %(levelname)s | %(message)s",
+    "%Y-%m-%d %H:%M:%S",
+)
+
+deploy_handler.setFormatter(deploy_formatter)
+
+logger.addHandler(deploy_handler)
+logger.setLevel(logging.INFO)
+logger.propagate = False
+
 
 def bench_container_exists(bench_name: str) -> bool:
     """Check if a Docker container for the bench already exists"""
@@ -21,6 +36,7 @@ def bench_container_exists(bench_name: str) -> bool:
     )
     return bench_name in result.splitlines()
 
+
 def generate_base_nginx_config():
     """Generate the base nginx config that includes bench-specific configs"""
     template_env = Environment(loader=FileSystemLoader("templates"))
@@ -29,6 +45,9 @@ def generate_base_nginx_config():
     )
     with open("/etc/nginx/nginx.conf", "w") as config_file:
         config_file.write(rendered_config)
+
+    logger.info("Generated base nginx config at /etc/nginx/nginx.conf")
+
 
 def generate_bench_nginx_configs(benches: dict[str, BenchInfo]):
     """Generate nginx config snippets for each bench and its sites"""
@@ -46,10 +65,16 @@ def generate_bench_nginx_configs(benches: dict[str, BenchInfo]):
         with open(config_path, "w") as config_file:
             config_file.write(rendered_config)
 
+        logger.info(f"Generated nginx config for bench {bench_name} at {config_path}")
+
     with open("nginx_configs.json", "w") as f:
         import json
 
         json.dump(mappings, f, indent=4)
+
+    logger.info(
+        "Dumped nginx config mappings for all benches and sites to nginx_configs.json"
+    )
 
 
 def deploy_bench_container(bench_name: str, port_offset: int, image: str) -> None:
@@ -74,6 +99,10 @@ def deploy_bench_container(bench_name: str, port_offset: int, image: str) -> Non
     )
     execute(command, timeout=300)
 
+    logger.info(
+        f"Deployed new bench container for bench {bench_name} using image {image}"
+    )
+
 
 def update_database_host(bench_name: str, container_ip: str):
     """Change database host in common_site_config.json to point to the database container's private IP"""
@@ -91,7 +120,9 @@ def update_database_host(bench_name: str, container_ip: str):
 
     with open(common_site_config_path, "w") as f:
         json.dump(config, f, indent=4)
-    
+
+    logger.info(f"Updated database host in {common_site_config_path} to {container_ip}")
+
 
 def remove_and_run_database_container(container_ip: str):
     """Remove and run the database container to remove readonly flag"""
@@ -113,13 +144,15 @@ def remove_and_run_database_container(container_ip: str):
     )
     # Run the database without the readonly
     execute(command, timeout=300)
+    logger.info(f"Restarted {DATABASE_CONTAINER_NAME} using IP {container_ip}")
 
 
 def initialize_and_start_benches(benches: dict[str, BenchInfo]):
     """Extract assets from image and start all available benches in the background"""
+    logger.info("Starting initialization and deployment of benches")
     generate_base_nginx_config()
     generate_bench_nginx_configs(benches=benches)
-    
+
     format = f"{{{{.NetworkSettings.Networks.{DOCKER_NETWORK_NAME}.IPAddress}}}}"
     container_ip = execute(
         f"docker inspect --format {format} {DATABASE_CONTAINER_NAME}"
@@ -135,8 +168,13 @@ def initialize_and_start_benches(benches: dict[str, BenchInfo]):
             timeout=500,
         )
 
+        logger.info(
+            f"Extracted assets for bench {bench_name} from image {bench_info['image']}"
+        )
+
         if bench_container_exists(bench_name):
             execute(f"docker start {bench_name}", raises=False, timeout=500)
+            logger.info(f"Started existing container for bench {bench_name}")
         else:
             port_offset = (
                 int(bench_info["web_port"]) - 18000
@@ -147,3 +185,4 @@ def initialize_and_start_benches(benches: dict[str, BenchInfo]):
 
     remove_and_run_database_container(container_ip)
     execute("systemctl reload nginx", timeout=30)
+    logger.info("Reloaded nginx")

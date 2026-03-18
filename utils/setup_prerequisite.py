@@ -8,12 +8,26 @@ from dataclasses import dataclass
 from utils.types import BenchInfo
 
 logger = logging.getLogger(__name__)
+
+cmd_handler = logging.FileHandler("commands.log")
+cmd_formatter = logging.Formatter(
+    "%(asctime)s | %(levelname)s | %(message)s",
+    "%Y-%m-%d %H:%M:%S",
+)
+cmd_handler.setFormatter(cmd_formatter)
+
+logger.addHandler(cmd_handler)
+logger.setLevel(logging.INFO)
+logger.propagate = False
+
+
 REQUIRED_SERVICES = ["docker", "nginx"]
 BENCHES_DIRECTORY = "/root/frappe-cloud/benches/home/frappe/benches"
 DATABASE_CONTAINER_NAME = "fc-dr-db-replica"
 DOCKER_NETWORK_NAME = "on_prem_replica_net"
 START_BENCHES_JOB_ID = "start-benches"
 DATABASE_BASE_DIRECTORY = "/root/frappe-cloud/database"
+
 
 @dataclass
 class ServerStatus:

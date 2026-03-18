@@ -9,3 +9,4 @@ wheels/
 # Virtual environments
 .venv
 nginx_configs.json
+*.log
