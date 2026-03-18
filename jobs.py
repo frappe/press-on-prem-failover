@@ -78,8 +78,9 @@ def update_database_host(bench_name: str):
     with open(common_site_config_path, "r") as f:
         config = json.load(f)
 
+    format = f"{{{{.NetworkSettings.Networks.{DOCKER_NETWORK_NAME}.IPAddress}}}}"
     config["db_host"] = execute(
-        f"docker inspect -f '{{ .NetworkSettings.Networks.{DOCKER_NETWORK_NAME}.IPAddress }}' {DATABASE_CONTAINER_NAME}"
+        f"docker inspect --format {format} {DATABASE_CONTAINER_NAME}"
     ).strip()
 
     with open(common_site_config_path, "w") as f:
