@@ -1,7 +1,7 @@
 import logging
 import sys
 
-from flask import Flask, render_template, request
+from flask import Flask, g, render_template, request
 from jobs import initialize_and_start_benches
 from redis import Redis
 from rq import Queue
@@ -34,7 +34,7 @@ def check_setup_status():
     if s.status != "ok":
         return {"error": True, "reason": "setup not ready"}, 400
 
-    request.environ["server_state"] = s
+    g.server_state = s
 
 
 @app.errorhandler(404)
@@ -45,31 +45,30 @@ def page_not_found(_):
 # Route for the main page that shows the setup status
 @app.route("/setup-status")
 def failover_setup_status():
-    server_state = request.environ.get("server_state")
+
     return render_template(
         "setup_status.html",
-        status=server_state.status,
-        services=server_state.services,
+        status=g.server_state.status,
+        services=g.server_state.services,
         bench_dir=BENCHES_DIRECTORY,
-        bench_ok=server_state.bench_ok,
-        benches=server_state.benches,
-        malformed_benches=server_state.malformed_benches,
-    ), 200 if server_state.status == "ok" else 503
+        bench_ok=g.server_state.bench_ok,
+        benches=g.server_state.benches,
+        malformed_benches=g.server_state.malformed_benches,
+    ), 200 if g.server_state.status == "ok" else 503
+
 
 # Route for page that shows bench start status (fires the start benches api)
 @app.route("/start-benches")
 def start_benches_page():
-    server_state = request.environ.get("server_state")
     return render_template(
         "start_benches.html",
-        status=server_state.status,
-        benches=server_state.benches,
+        status=g.server_state.status,
+        benches=g.server_state.benches,
     )
 
 
 @app.route("/api/start-benches", methods=["POST"])
 def start_benches_api():
-    server_state = request.environ.get("server_state")
     try:
         existing_job = Job.fetch(START_BENCHES_JOB_ID, connection=queue.connection)
         if existing_job.get_status() in ("queued", "started"):
@@ -79,12 +78,13 @@ def start_benches_api():
 
     queue.enqueue(
         initialize_and_start_benches,
-        benches=server_state.benches,
+        benches=g.server_state.benches,
         job_id=START_BENCHES_JOB_ID,
     )
+
     return {
         "status": "queued",
-        "benches": list(server_state.benches.keys()),
+        "benches": list(g.server_state.benches.keys()),
         "job_id": START_BENCHES_JOB_ID,
     }, 202
 

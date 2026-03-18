@@ -5,6 +5,8 @@ import shlex
 import subprocess
 from dataclasses import dataclass
 
+from utils.types import BenchInfo
+
 logger = logging.getLogger(__name__)
 REQUIRED_SERVICES = ["docker", "mysql", "nginx"]
 BENCHES_DIRECTORY = "/home/frappe/benches"
@@ -64,7 +66,7 @@ def active_images() -> list[str]:  # was `int`, wrong
     return output.splitlines() if output else []
 
 
-def active_benches(benches_directory: str) -> tuple[dict[str, str], list[str]]:
+def active_benches(benches_directory: str) -> tuple[dict[str, BenchInfo], list[str]]:
     """Return (valid_benches, malformed_benches).
 
     A bench is malformed if it's missing required files or its docker image

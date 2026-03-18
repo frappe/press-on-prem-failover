@@ -7,15 +7,15 @@ upstream {{ bench_name }}-socketio-server {
     server 127.0.0.1:{{ socketio_port }} fail_timeout=0;
 }
 
-{% for site_name, port in sites.items() %}
+{% for site_name, site_port in sites.items() %}
 # --- Server Block for {{ site_name }} ---
 server {
-    listen {{ port }};
+    listen {{ site_port }};
     server_name {{ site_name }};
     
     root {{ benches_directory }}/{{ bench_name }}/sites;
 
-    # Explicitly set the site name for Frappe's multi-tenant logic
+    # Explicitly set the site name
     set $site_name "{{ site_name }}";
 
     location /assets {
@@ -33,7 +33,6 @@ server {
     }
 
     location / {
-        # Check site-specific public files first, then fallback to Frappe webserver
         try_files /$site_name/public/$uri @webserver;
     }
 
