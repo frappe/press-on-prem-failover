@@ -1,7 +1,7 @@
 import logging
 import sys
 
-from flask import Flask, g, render_template
+from flask import Flask, g, redirect, render_template
 from jobs import initialize_and_start_benches
 from redis import Redis
 from rq import Queue
@@ -32,19 +32,23 @@ app = Flask(__name__)
 queue = Queue(connection=Redis.from_url("redis://localhost:6379/0"))
 
 
-
 @app.before_request
 def check_setup_status():
     s = check_server_status()
-    if s.status != "ok":
-        return {"error": True, "reason": "setup not ready"}, 400
-
     g.server_state = s
 
 
 @app.errorhandler(404)
 def page_not_found(_):
-    return render_template("404.html"), 404
+    return redirect("/")
+
+
+@app.route("/")
+def index():
+    return render_template(
+        "index.html",
+        overall_status=g.server_state.status,
+    )
 
 
 # Route for the main page that shows the setup status
