@@ -37,18 +37,6 @@ def bench_container_exists(bench_name: str) -> bool:
     return bench_name in result.splitlines()
 
 
-def generate_base_nginx_config():
-    """Generate the base nginx config that includes bench-specific configs"""
-    template_env = Environment(loader=FileSystemLoader("templates"))
-    rendered_config = template_env.get_template("nginx.conf.j2").render(
-        BENCHES_DIRECTORY=BENCHES_DIRECTORY
-    )
-    with open("/etc/nginx/nginx.conf", "w") as config_file:
-        config_file.write(rendered_config)
-
-    logger.info("Generated base nginx config at /etc/nginx/nginx.conf")
-
-
 def generate_bench_nginx_configs(benches: dict[str, BenchInfo]):
     """Generate nginx config snippets for each bench and its sites"""
     mappings = get_port_mapping_for_sites(list(benches.keys()))
@@ -150,7 +138,6 @@ def remove_and_run_database_container(container_ip: str):
 def initialize_and_start_benches(benches: dict[str, BenchInfo]):
     """Extract assets from image and start all available benches in the background"""
     logger.info("Starting initialization and deployment of benches")
-    generate_base_nginx_config()
     generate_bench_nginx_configs(benches=benches)
 
     format = f"{{{{.NetworkSettings.Networks.{DOCKER_NETWORK_NAME}.IPAddress}}}}"
