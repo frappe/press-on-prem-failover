@@ -77,9 +77,9 @@ def is_service_active(service: str) -> bool:
     return execute(f"systemctl is-active {service}", raises=False) == "active"
 
 
-def active_images() -> list[str]:  # was `int`, wrong
+def active_images() -> list[str]:
     """Return list of docker images present on the host."""
-    output = execute("docker images --format '{{.Repository}}:{{.Tag}}'")
+    output = execute('docker image ls --format "{{{{.Repository}}}}:{{{{.Tag}}}}"')
     return output.splitlines() if output else []
 
 
