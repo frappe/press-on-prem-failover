@@ -151,6 +151,7 @@ def check_server_status() -> ServerStatus:
         )
         == DATABASE_CONTAINER_NAME
     )
+    services["database"] = is_database_container_running
     status = (
         "ok"
         if all(services.values())

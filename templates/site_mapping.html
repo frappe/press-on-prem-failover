@@ -1,143 +1,273 @@
 {% extends "base.html" %}
 
-{% block title %}Site Mapping{% endblock %}
+{% block title %}Site Mapping | Failover Manager{% endblock %}
+
+{% block breadcrumbs %}
+<a href="{{ url_for('failover_setup_status') }}">Setup</a>
+<span class="breadcrumb-sep">›</span>
+<span class="breadcrumb-current">Site Mapping</span>
+{% endblock %}
+
+{% block header %}Site Mapping{% endblock %}
+
+{% block actions %}
+{% if bench_job_status not in ("finished", "failed") and status == 'ok' %}
+<button id="refreshBtn" class="btn btn-default">
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M10.5 2.5C9.5 1.3 8 0.5 6.2 0.5C3.1 0.5 0.5 3 0.5 6.2C0.5 9.4 3 11.5 6.2 11.5C8.8 11.5 11 9.9 11.8 7.5"
+            stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
+        <path d="M10.5 0.5V3.5H7.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"
+            stroke-linejoin="round" />
+    </svg>
+    Check Status
+</button>
+{% endif %}
+{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-lg-8">
-
-        <!-- Header -->
-        <div class="d-flex align-items-center justify-content-between mb-4">
+<div class="page-layout">
+    <div style="display: flex; flex-direction: column; gap: var(--ef-spacing-14);">
+        {% if status != 'ok' %}
+        <div class="callout callout-amber">
+            <svg style="flex-shrink:0; margin-top:1px;" width="14" height="14" viewBox="0 0 14 14" fill="none"
+                xmlns="http://www.w3.org/2000/svg">
+                <path d="M7 1.75L12.25 11.25H1.75L7 1.75Z" stroke="currentColor" stroke-width="1.2"
+                    stroke-linejoin="round" />
+                <path d="M7 5.75V8.25" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
+                <circle cx="7" cy="9.75" r="0.5" fill="currentColor" />
+            </svg>
             <div>
-                <h2 class="mb-1">Site Mapping</h2>
-                <p class="text-muted mb-0">Port assignments for all configured sites</p>
+                <p class="callout-title">System not ready</p>
+                <p class="callout-body">Sites are not being served yet please check the setup page</p>
             </div>
-            <a href="{{ url_for('failover_setup_status') }}"
-                class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-2">
-                <i class="bi bi-arrow-left"></i>
-                Back to Setup
-            </a>
         </div>
+        {% endif %}
+        <div class="card">
 
-        <!-- Job Status Card -->
-        <div class="card border-0 shadow-sm mb-4">
-            <div class="card-header border-bottom py-3 d-flex align-items-center justify-content-between">
-                <div class="d-flex align-items-center gap-2">
-                    <i class="bi bi-activity"></i>
-                    <h6 class="mb-0 fw-semibold">Bench Start Job</h6>
-                </div>
-                {% if bench_job_status not in ("finished", "failed") %}
-                <button id="refreshBtn" class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-2">
-                    <i class="bi bi-arrow-repeat"></i>
-                    Check Status
-                </button>
-                {% endif %}
-            </div>
-            <div class="card-body py-3">
+            <div style="padding: var(--ef-spacing-14) var(--ef-spacing-14);">
+
                 {% if bench_job_status in ("queued", "started") %}
-                <div class="d-flex align-items-center gap-3">
-                    <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                <div style="display: flex; align-items: center; gap: var(--ef-spacing-12);">
+                    <span class="job-spinner" aria-hidden="true"></span>
                     <div>
-                        <div class="fw-semibold">
-                            {{ "Queued" if bench_job_status == "queued" else "Running" }}
-                        </div>
-                        <div class="text-muted small">
-                            Benches are being started. Click "Check Status" to refresh.
-                        </div>
+                        <p
+                            style="font-weight: var(--ef-font-weight-semibold); color: var(--ef-ink-blue-4); font-size: var(--ef-font-size-sm); margin-bottom: 2px;">
+                            {{ "Job Queued" if bench_job_status == "queued" else "Execution in Progress" }}
+                        </p>
+                        <p style="font-size: var(--ef-font-size-xs); color: var(--ef-ink-gray-5); margin: 0;">
+                            The system is initialising benches and updating Nginx.
+                        </p>
                     </div>
                 </div>
 
                 {% elif bench_job_status == "finished" %}
-                <div class="d-flex align-items-center justify-content-between">
-                    <div class="d-flex align-items-center gap-3">
-                        <i class="bi bi-check-circle-fill text-success fs-4"></i>
+                <div
+                    style="display: flex; align-items: center; justify-content: space-between; gap: var(--ef-spacing-12);">
+                    <div style="display: flex; align-items: center; gap: var(--ef-spacing-12);">
+                        <span class="indicator green" style="width:8px; height:8px; flex-shrink:0;"></span>
                         <div>
-                            <div class="fw-semibold">Completed</div>
-                            <div class="text-muted small">All benches have been started successfully.</div>
+                            <p
+                                style="font-weight: var(--ef-font-weight-semibold); color: var(--ef-ink-green-4); font-size: var(--ef-font-size-sm); margin-bottom: 2px;">
+                                Deployment Successful
+                            </p>
+                            <p style="font-size: var(--ef-font-size-xs); color: var(--ef-ink-gray-5); margin: 0;">
+                                All benches are online and traffic is being routed.
+                            </p>
                         </div>
                     </div>
-                    <a href="{{ url_for('failover_setup_status') }}"
-                        class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-2">
-                        <i class="bi bi-arrow-repeat"></i>
-                        Retrigger
-                    </a>
                 </div>
 
                 {% elif bench_job_status == "failed" %}
-                <div class="d-flex align-items-center justify-content-between">
-                    <div class="d-flex align-items-center gap-3">
-                        <i class="bi bi-x-circle-fill text-danger fs-4"></i>
+                <div
+                    style="display: flex; align-items: center; justify-content: space-between; gap: var(--ef-spacing-12);">
+                    <div style="display: flex; align-items: center; gap: var(--ef-spacing-12);">
+                        <span class="indicator red" style="width:8px; height:8px; flex-shrink:0;"></span>
                         <div>
-                            <div class="fw-semibold">Failed</div>
-                            <div class="text-muted small">The bench start job encountered an error.</div>
+                            <p
+                                style="font-weight: var(--ef-font-weight-semibold); color: var(--ef-ink-red-4); font-size: var(--ef-font-size-sm); margin-bottom: 2px;">
+                                Process Failed
+                            </p>
+                            <p style="font-size: var(--ef-font-size-xs); color: var(--ef-ink-gray-5); margin: 0;">
+                                Encountered an error during bench initialisation. Check system logs.
+                            </p>
                         </div>
                     </div>
-                    <a href="{{ url_for('failover_setup_status') }}"
-                        class="btn btn-sm btn-outline-danger d-inline-flex align-items-center gap-2">
-                        <i class="bi bi-arrow-repeat"></i>
-                        Retrigger
-                    </a>
+                    <form id="retryDeployment" style="flex-shrink:0;">
+                        <button type="submit" class="btn btn-danger"
+                            style="height:26px; font-size: var(--ef-font-size-xs);">
+                            Retry Deployment
+                        </button>
+                    </form>
                 </div>
 
                 {% else %}
-                <div class="d-flex align-items-center gap-3">
-                    <i class="bi bi-dash-circle text-muted fs-4"></i>
+                <div style="display: flex; align-items: center; gap: var(--ef-spacing-12);">
+                    <span class="indicator orange" style="width:8px; height:8px; flex-shrink:0;"></span>
                     <div>
-                        <div class="fw-semibold">Not Started</div>
-                        <div class="text-muted small">No bench start job has been run yet.</div>
+                        <p
+                            style="font-weight: var(--ef-font-weight-medium); color: var(--ef-ink-gray-6); font-size: var(--ef-font-size-sm); margin-bottom: 2px;">
+                            Awaiting Trigger
+                        </p>
+                        <p style="font-size: var(--ef-font-size-xs); color: var(--ef-ink-gray-5); margin: 0;">
+                            Start the failover sequence from the Setup page.
+                        </p>
                     </div>
                 </div>
                 {% endif %}
+
             </div>
         </div>
 
-        <!-- Site Mapping Table -->
         {% if bench_job_status not in ("queued", "started") and nginx_config %}
+
+        <p
+            style="font-size: var(--ef-font-size-base); font-weight: var(--ef-font-weight-semibold); color: var(--ef-ink-gray-8); letter-spacing: -0.01em; margin-bottom: 2px;">
+            Configured Mappings
+        </p>
+
         {% for bench_name, bench_data in nginx_config.items() %}
-        <div class="card border-0 shadow-sm mb-4">
-            <div class="card-header border-bottom py-3 d-flex align-items-center gap-2">
-                <i class="bi bi-server"></i>
-                <h6 class="mb-0 fw-semibold font-monospace">{{ bench_name }}</h6>
+        <div class="card">
+            <div class="card-header">
+                <code
+                    style="font-size: var(--ef-font-size-xs); color: var(--ef-ink-blue-4); background: none; padding: 0;">{{ bench_name }}</code>
+                <span class="badge badge-gray-subtle">{{ bench_data.sites | length }} site{{ 's' if bench_data.sites |
+                    length != 1 }}</span>
             </div>
-            <table class="table table-hover mb-0">
-                <thead>
-                    <tr>
-                        <th class="ps-3 py-3 text-muted small fw-semibold">Site</th>
-                        <th class="pe-3 py-3 text-muted small fw-semibold text-end">Port</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for site, port in bench_data.sites.items() %}
-                    <tr>
-                        <td class="ps-3 py-3 font-monospace small">{{ site }}</td>
-                        <td class="pe-3 py-3 text-end">
-                            <span class="badge bg-secondary-subtle text-secondary font-monospace px-3 py-2">
-                                {{ port }}
-                            </span>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+
+            <!-- Table header -->
+            <div style="
+                    display: grid;
+                    grid-template-columns: 1fr auto;
+                    padding: var(--ef-spacing-8) var(--ef-spacing-14);
+                    border-bottom: 1px solid var(--ef-outline-gray-1);
+                    background: var(--ef-surface-gray-1);
+                ">
+                <span class="section-label">Site Domain</span>
+                <span class="section-label" style="text-align:right;">Port</span>
+            </div>
+
+            {% for site, port in bench_data.sites.items() %}
+            <div class="list-item" style="font-size: var(--ef-font-size-sm);">
+                <div class="list-item-left">
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"
+                        style="color: var(--ef-ink-gray-4); flex-shrink:0;">
+                        <circle cx="6" cy="6" r="4.5" stroke="currentColor" stroke-width="1.1" />
+                        <path d="M6 1.5C6 1.5 4 3.5 4 6C4 8.5 6 10.5 6 10.5" stroke="currentColor" stroke-width="1.1"
+                            stroke-linecap="round" />
+                        <path d="M6 1.5C6 1.5 8 3.5 8 6C8 8.5 6 10.5 6 10.5" stroke="currentColor" stroke-width="1.1"
+                            stroke-linecap="round" />
+                        <path d="M1.5 6H10.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" />
+                    </svg>
+                    <span
+                        style="font-family: 'SF Mono','Fira Code','Cascadia Code',monospace; color: var(--ef-ink-gray-8);">{{
+                        site }}</span>
+                </div>
+                <span class="badge badge-blue-subtle">{{ port }}</span>
+            </div>
+            {% endfor %}
         </div>
         {% endfor %}
 
-        {% elif bench_job_status in ("queued", "started") %}
-        <div class="alert alert-info d-flex gap-2 align-items-center">
-            <i class="bi bi-info-circle"></i>
-            Site mapping will be shown here once the bench start job completes.
-        </div>
-
-        {% elif not nginx_config %}
-        <div class="alert alert-secondary d-flex gap-2 align-items-center">
-            <i class="bi bi-info-circle"></i>
-            No nginx configuration found yet.
+        {% else %}
+        <div style="
+            padding: var(--ef-spacing-16) var(--ef-spacing-14);
+            text-align: center;
+            background: var(--ef-surface-gray-1);
+            border: 1px dashed var(--ef-outline-gray-2);
+            border-radius: var(--ef-radius-4);
+        ">
+            <p style="font-size: var(--ef-font-size-sm); color: var(--ef-ink-gray-4); margin:0;">No active Nginx
+                configurations found.</p>
         </div>
         {% endif %}
 
     </div>
+
+    <aside>
+        <div class="sidebar-card"
+            style="background: white; border: 1px solid var(--ef-border-color); border-radius: 8px; padding: var(--ef-spacing-16);">
+            <p class="section-label"
+                style="margin-bottom: var(--ef-spacing-12); font-weight: 700; color: #1d2129; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em;">
+                Operational Note
+            </p>
+            <p class="note-text"
+                style="margin: 0; color: #1d2129; font-size: var(--ef-font-size-sm); line-height: 1.5; font-weight: 450;">
+                Ports are assigned sequentially starting from the base port configured in your bench settings.
+                Ensure your firewall allows inbound traffic on these ports.
+            </p>
+        </div>
+    </aside>
 </div>
 
-<script src="{{ url_for('static', filename='js/site_mapping.js') }}" data-job-status="{{ bench_job_status }}">
-</script>
+<style>
+    @keyframes ef-spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    .job-spinner {
+        display: inline-block;
+        width: 13px;
+        height: 13px;
+        border: 1.5px solid var(--ef-outline-gray-2);
+        border-top-color: var(--ef-ink-blue-4);
+        border-radius: 50%;
+        animation: ef-spin 0.6s linear infinite;
+        flex-shrink: 0;
+    }
+
+    .btn-danger {
+        background: var(--ef-surface-red-5);
+        border-color: transparent;
+        color: #fff;
+        padding: 0 var(--ef-spacing-10);
+        border-radius: var(--ef-radius-3);
+        font-size: var(--ef-font-size-sm);
+        font-weight: var(--ef-font-weight-medium);
+        cursor: pointer;
+        border: 1px solid transparent;
+        font-family: inherit;
+        display: inline-flex;
+        align-items: center;
+        gap: var(--ef-spacing-6);
+        height: 28px;
+        transition: background 0.1s ease;
+    }
+
+    .btn-danger:hover {
+        background: var(--ef-light-red-600, #b52a2a);
+    }
+
+    /* Blue port badge — not in base since it's only used here */
+    .badge-blue-subtle {
+        background: var(--ef-surface-blue-2);
+        color: var(--ef-ink-blue-4);
+        display: inline-flex;
+        align-items: center;
+        height: 20px;
+        padding: 0 var(--ef-spacing-8);
+        font-size: var(--ef-font-size-xs);
+        font-weight: var(--ef-font-weight-medium);
+        border-radius: var(--ef-radius-9);
+        border: 1px solid transparent;
+        font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+        white-space: nowrap;
+    }
+
+    /* Refresh button loading state */
+    .btn-spinner-dark {
+        display: inline-block;
+        width: 11px;
+        height: 11px;
+        border: 1.5px solid var(--ef-outline-gray-3);
+        border-top-color: var(--ef-ink-gray-7);
+        border-radius: 50%;
+        animation: ef-spin 0.55s linear infinite;
+        flex-shrink: 0;
+    }
+</style>
+
+<script src="{{ url_for('static', filename='js/site_mapping.js') }}" data-job-status="{{ bench_job_status }}"
+    defer></script>
 {% endblock %}

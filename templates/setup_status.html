@@ -1,167 +1,174 @@
 {% extends "base.html" %}
 
-{% block title %}Setup Status{% endblock %}
+{% block title %}Setup Readiness | Failover Manager{% endblock %}
+
+{% block breadcrumbs %}
+    <span class="breadcrumb-current">Setup Readiness</span>
+{% endblock %}
+
+{% block header %}Setup Readiness{% endblock %}
+
+{% block actions %}
+    <button class="btn btn-default" onclick="window.location.reload()">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M10.5 2.5C9.5 1.3 8 0.5 6.2 0.5C3.1 0.5 0.5 3 0.5 6.2C0.5 9.4 3 11.5 6.2 11.5C8.8 11.5 11 9.9 11.8 7.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+            <path d="M10.5 0.5V3.5H7.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Refresh
+    </button>
+
+    <button
+        id="startBtn"
+        class="btn btn-dark"
+        {% if status != 'ok' %}disabled{% endif %}
+    >
+        <svg width="11" height="11" viewBox="0 0 11 11" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M2.5 1.5L9 5.5L2.5 9.5V1.5Z" fill="currentColor"/>
+        </svg>
+        Configure Sites And Start Benches
+    </button>
+{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-  <div class="col-lg-8">
 
-    <!-- Header -->
-    <div class="d-flex align-items-center justify-content-between mb-4">
-      <div>
-        <h2 class="mb-1">Setup Status</h2>
-        <p class="text-muted mb-0">System service health for failover readiness</p>
-      </div>
-      <a href="{{ url_for('failover_setup_status') }}"
-        class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-2">
-        <i class="bi bi-arrow-repeat"></i>
-        <span>Refresh</span>
-      </a>
-    </div>
+<div class="page-layout">
 
-    <!-- Status Alert -->
-    {% if status == "ok" %}
-    <div class="alert alert-success d-flex align-items-start gap-3 p-4 mb-4" role="alert">
-      <i class="bi bi-check-circle-fill fs-4 flex-shrink-0"></i>
-      <div>
-        <div class="fw-semibold fs-5">Failover Ready</div>
-        <div class="text-success-emphasis">
-          All services are running, bench directory is configured, and all images are present.
-        </div>
-      </div>
-    </div>
-    {% else %}
-    <div class="alert alert-danger d-flex align-items-start gap-3 p-4 mb-4" role="alert">
-      <i class="bi bi-exclamation-triangle-fill fs-4 flex-shrink-0"></i>
-      <div>
-        <div class="fw-semibold fs-5">Failover Not Ready</div>
-        <div class="text-danger-emphasis">
-          {% set problems = [] %}
-          {% if not bench_ok %}{% set _ = problems.append("bench directory inaccessible") %}{% endif %}
-          {% for s, active in services.items() %}{% if not active %}{% set _ = problems.append(s ~ " inactive") %}{%
-          endif %}{% endfor %}
-          {% if malformed_benches %}{% set _ = problems.append(malformed_benches | length ~ " bench(es) malformed or
-          missing image") %}{% endif %}
-          {% if not benches and bench_ok %}{% set _ = problems.append("no startable benches found") %}{% endif %}
-          {{ problems | join(", ") | capitalize }}.
-        </div>
-      </div>
-    </div>
-    {% endif %}
+    <!-- ── Left column ──────────────────────────────────────────────── -->
+    <div style="display: flex; flex-direction: column; gap: var(--ef-spacing-14);">
 
-    <!-- Services Card -->
-    <div class="card border-0 shadow-sm mb-4">
-      <div class="card-header border-bottom py-3 d-flex align-items-center gap-2">
-        <i class="bi bi-hdd-network"></i>
-        <h6 class="mb-0 fw-semibold">Required Services</h6>
-      </div>
-      <ul class="list-group list-group-flush">
-        {% for service, active in services.items() %}
-        <li class="list-group-item d-flex align-items-center justify-content-between py-3">
-          <span class="font-monospace small">{{ service }}</span>
-          {% if active %}
-          <span class="badge bg-success-subtle text-success d-inline-flex align-items-center gap-1 px-3 py-2">
-            <i class="bi bi-check-circle"></i> active
-          </span>
-          {% else %}
-          <span class="badge bg-danger-subtle text-danger d-inline-flex align-items-center gap-1 px-3 py-2">
-            <i class="bi bi-x-circle"></i> inactive
-          </span>
-          {% endif %}
-        </li>
-        {% endfor %}
-      </ul>
-    </div>
-
-    <!-- Bench Card -->
-    <div class="card border-0 shadow-sm mb-4">
-      <div class="card-header border-bottom py-3 d-flex align-items-center gap-2">
-        <i class="bi bi-folder2-open"></i>
-        <h6 class="mb-0 fw-semibold">Bench Directory</h6>
-      </div>
-      <ul class="list-group list-group-flush">
-
-        <li class="list-group-item d-flex align-items-center justify-content-between py-3">
-          <span class="font-monospace text-muted small">{{ bench_dir }}</span>
-          {% if bench_ok %}
-          <span class="badge bg-success-subtle text-success d-inline-flex align-items-center gap-1 px-3 py-2">
-            <i class="bi bi-check-circle"></i> Accessible
-          </span>
-          {% else %}
-          <span class="badge bg-danger-subtle text-danger d-inline-flex align-items-center gap-1 px-3 py-2">
-            <i class="bi bi-x-circle"></i> Inaccessible
-          </span>
-          {% endif %}
-        </li>
-
-        {% if bench_ok %}
-
-        {% for bench, image in benches.items() %}
-        <li class="list-group-item py-3">
-          <div class="d-flex align-items-center justify-content-between">
+        {% if status != 'ok' %}
+        <div class="callout callout-amber">
+            <svg style="flex-shrink:0; margin-top:1px;" width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M7 1.75L12.25 11.25H1.75L7 1.75Z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
+                <path d="M7 5.75V8.25" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+                <circle cx="7" cy="9.75" r="0.5" fill="currentColor"/>
+            </svg>
             <div>
-              <div class="font-monospace small fw-semibold">{{ bench }}</div>
-              <div class="text-muted small mt-1">
-                <i class="bi bi-box"></i> {{ image }}
-              </div>
+                <p class="callout-title">System not ready</p>
+                <p class="callout-body">Failover cannot be initiated until all core services and benches are synchronised.</p>
             </div>
-            <span class="badge bg-success-subtle text-success d-inline-flex align-items-center gap-1 px-3 py-2">
-              <i class="bi bi-check-circle"></i> Ready
-            </span>
-          </div>
-        </li>
-        {% endfor %}
-
-        {% for bench in malformed_benches %}
-        <li class="list-group-item py-3">
-          <div class="d-flex align-items-center justify-content-between">
-            <div>
-              <div class="font-monospace small fw-semibold">{{ bench }}</div>
-              <div class="text-muted small mt-1">
-                <i class="bi bi-exclamation-octagon"></i> Missing required files or image — will not be started
-              </div>
-            </div>
-            <span class="badge bg-danger-subtle text-danger d-inline-flex align-items-center gap-1 px-3 py-2">
-              <i class="bi bi-file-earmark-x"></i> Malformed
-            </span>
-          </div>
-        </li>
-        {% endfor %}
-
-        {% if not benches and not malformed_benches %}
-        <li class="list-group-item py-3 text-muted small d-flex align-items-center gap-2">
-          <i class="bi bi-info-circle"></i> No benches found in this directory.
-        </li>
+        </div>
         {% endif %}
 
-        {% endif %}
+        <!-- Core Services -->
+        <div class="card">
+            <div class="card-header">
+                <span>Core Services</span>
+            </div>
+            {% for service, is_up in services.items() %}
+            <div class="list-item">
+                <div class="list-item-left">
+                    <span class="indicator {% if is_up %}green{% else %}red{% endif %}"></span>
+                    <span style="font-weight: var(--ef-font-weight-medium); text-transform: capitalize; color: var(--ef-ink-gray-8);">{{ service }}</span>
+                </div>
+                <span style="font-size: var(--ef-font-size-xs); color: {% if is_up %}var(--ef-ink-green-4){% else %}var(--ef-ink-red-4){% endif %}; font-weight: var(--ef-font-weight-medium);">
+                    {% if is_up %}Connected{% else %}Service down{% endif %}
+                </span>
+            </div>
+            {% endfor %}
+        </div>
 
-      </ul>
+        <!-- Synchronised Benches -->
+        <div class="card">
+            <div class="card-header">
+                <span>Synchronised Benches</span>
+            </div>
+
+            {% if benches %}
+                {% for bench in benches %}
+                <div class="list-item">
+                    <div class="list-item-left">
+                        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" xmlns="http://www.w3.org/2000/svg" style="color: var(--ef-ink-gray-4); flex-shrink:0;">
+                            <rect x="1" y="1" width="11" height="11" rx="2" stroke="currentColor" stroke-width="1.1"/>
+                            <path d="M4 6.5L6 8.5L9 4.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        <span style="font-size: var(--ef-font-size-sm); font-weight: var(--ef-font-weight-medium); color: var(--ef-ink-gray-8); letter-spacing: -0.01em;">{{ bench }}</span>
+                    </div>
+                    <span class="badge badge-green-subtle">Ready</span>
+                </div>
+                {% endfor %}
+            {% endif %}
+
+            {% if malformed_benches %}
+                {% for m_bench in malformed_benches %}
+                <div class="list-item" style="background: var(--ef-surface-red-1);">
+                    <div class="list-item-left">
+                        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" xmlns="http://www.w3.org/2000/svg" style="color: var(--ef-ink-red-4); flex-shrink:0;">
+                            <rect x="1" y="1" width="11" height="11" rx="2" stroke="currentColor" stroke-width="1.1"/>
+                            <path d="M4.5 4.5L8.5 8.5M8.5 4.5L4.5 8.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/>
+                        </svg>
+                        <span style="font-size: var(--ef-font-size-sm); font-weight: var(--ef-font-weight-medium); color: var(--ef-ink-red-4);">{{ m_bench }}</span>
+                    </div>
+                    <span class="badge badge-red-subtle">Malformed / No image</span>
+                </div>
+                {% endfor %}
+            {% endif %}
+
+            {% if not benches and not malformed_benches %}
+            <div style="padding: var(--ef-spacing-16) var(--ef-spacing-14); text-align: center; color: var(--ef-ink-gray-4); font-size: var(--ef-font-size-sm);">
+                No benches synchronised yet
+            </div>
+            {% endif %}
+        </div>
+
     </div>
 
-    <!-- Start Benches Button -->
-    <div class="d-flex justify-content-end mb-4">
-      {% if status == "ok" %}
-      <button id="startBtn" class="btn btn-primary d-inline-flex align-items-center gap-2">
-        <i class="bi bi-play-fill"></i>
-        Configure Sites And Start Benches
-      </button>
-      {% else %}
-      <span data-bs-toggle="tooltip" data-bs-placement="left" title="Resolve all setup issues before starting benches">
-        <button class="btn btn-primary d-inline-flex align-items-center gap-2" disabled>
-          <i class="bi bi-play-fill"></i>
-          Configure Sites And Start Benches
-        </button>
-      </span>
-      {% endif %}
-    </div>
+    <!-- ── Right column (sidebar) ────────────────────────────────────── -->
+    <aside>
+        <div class="sidebar-card">
 
-  </div>
+            <p class="section-label" style="margin-bottom: var(--ef-spacing-12);">Environment</p>
+
+            <div style="margin-bottom: var(--ef-spacing-12);">
+                <p style="font-size: 11px; color: var(--ef-ink-gray-5); margin-bottom: var(--ef-spacing-4);">Benches directory</p>
+                <code>{{ bench_dir }}</code>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="kv-row">
+                <span class="kv-key">Healthy benches</span>
+                <span class="kv-value" style="color: var(--ef-ink-green-4);">{{ benches|length }}</span>
+            </div>
+            <div class="kv-row">
+                <span class="kv-key">Sync errors</span>
+                <span class="kv-value" style="color: {% if malformed_benches %}var(--ef-ink-red-4){% else %}var(--ef-ink-gray-5){% endif %};">{{ malformed_benches|length }}</span>
+            </div>
+
+            <div class="divider"></div>
+
+            <p class="note-text">
+                Benches listed as <strong style="color: var(--ef-ink-red-4);">Malformed / No image</strong> are missing Docker images or have invalid directory structures. They will be skipped during failover.
+            </p>
+
+        </div>
+    </aside>
+
 </div>
+
+<style>
+    @keyframes ef-spin {
+        to { transform: rotate(360deg); }
+    }
+    .btn-spinner {
+        display: inline-block;
+        width: 11px;
+        height: 11px;
+        border: 1.5px solid rgba(255,255,255,0.35);
+        border-top-color: #fff;
+        border-radius: 50%;
+        animation: ef-spin 0.55s linear infinite;
+        flex-shrink: 0;
+    }
+    @keyframes ef-toastIn {
+        from { opacity: 0; transform: translateY(-5px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+    #toast.visible {
+        display: flex !important;
+        animation: ef-toastIn 0.16s ease;
+    }
+</style>
 <script src="{{ url_for('static', filename='js/setup_status.js') }}"></script>
-<script>
-  document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
-    new bootstrap.Tooltip(el)
-  })
-</script>
 {% endblock %}
+

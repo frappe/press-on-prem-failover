@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard | Failover Manager{% endblock %}
+
+{% block breadcrumbs %}
+    <span class="breadcrumb-current">Dashboard</span>
+{% endblock %}
+
+{% block header %}Dashboard{% endblock %}
+
+{% block content %}
+
+<div style="display: flex; flex-direction: column; gap: var(--ef-spacing-14); max-width: 720px;">
+
+    <div style="
+        background: var(--ef-surface-cards);
+        border: 1px solid var(--ef-outline-gray-1);
+        border-radius: var(--ef-radius-4);
+        padding: var(--ef-spacing-12) var(--ef-spacing-14);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--ef-spacing-12);
+    ">
+        <div style="display: flex; align-items: center; gap: var(--ef-spacing-10);">
+            <span class="indicator {% if overall_status == 'ok' %}green{% elif overall_status == 'partial' %}orange{% else %}red{% endif %}"
+                  style="width: 8px; height: 8px;"></span>
+            <span style="font-size: var(--ef-font-size-sm); font-weight: var(--ef-font-weight-medium); color: var(--ef-ink-gray-8);">
+                {% if overall_status == 'ok' %}All systems ready
+                {% else %}System not ready
+                {% endif %}
+            </span>
+        </div>
+        <a href="/setup-status" style="font-size: var(--ef-font-size-xs); color: var(--ef-ink-blue-4); text-decoration: none; font-weight: var(--ef-font-weight-medium);">
+            View details →
+        </a>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--ef-spacing-12);">
+
+        <a href="/setup-status" class="nav-card">
+            <div class="nav-card-icon" style="background: var(--ef-surface-blue-2);">
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" style="color: var(--ef-ink-blue-4);">
+                    <circle cx="9" cy="9" r="7" stroke="currentColor" stroke-width="1.3"/>
+                    <path d="M6 9L8 11L12 7" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </div>
+            <div style="flex: 1;">
+                <p class="nav-card-title">Setup Status</p>
+                <p class="nav-card-desc">Verify core services and synchronised benches before triggering a failover.</p>
+            </div>
+            <svg class="nav-card-arrow" width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M5 3L9 7L5 11" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </a>
+
+        <a href="/site-mapping" class="nav-card">
+            <div class="nav-card-icon" style="background: var(--ef-surface-green-2);">
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg" style="color: var(--ef-ink-green-4);">
+                    <rect x="2" y="4" width="14" height="10" rx="2" stroke="currentColor" stroke-width="1.3"/>
+                    <path d="M2 7H16" stroke="currentColor" stroke-width="1.3"/>
+                    <path d="M6 7V14" stroke="currentColor" stroke-width="1.3"/>
+                </svg>
+            </div>
+            <div style="flex: 1;">
+                <p class="nav-card-title">Site Mapping</p>
+                <p class="nav-card-desc">Monitor bench start jobs and review Nginx port assignments for each site.</p>
+            </div>
+            <svg class="nav-card-arrow" width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M5 3L9 7L5 11" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </a>
+
+    </div>
+
+</div>
+
+<style>
+    .nav-card {
+        background: var(--ef-surface-cards);
+        border: 1px solid var(--ef-outline-gray-1);
+        border-radius: var(--ef-radius-4);
+        padding: var(--ef-spacing-14);
+        display: flex;
+        align-items: flex-start;
+        gap: var(--ef-spacing-12);
+        text-decoration: none;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+        transition: border-color 0.12s ease, box-shadow 0.12s ease;
+    }
+    .nav-card:hover {
+        border-color: var(--ef-outline-gray-2);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+    }
+    .nav-card-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: var(--ef-radius-3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    .nav-card-title {
+        font-size: var(--ef-font-size-sm);
+        font-weight: var(--ef-font-weight-semibold);
+        color: var(--ef-ink-gray-8);
+        margin-bottom: 4px;
+    }
+    .nav-card-desc {
+        font-size: var(--ef-font-size-xs);
+        color: var(--ef-ink-gray-5);
+        line-height: 1.5;
+        margin: 0;
+    }
+    .nav-card-arrow {
+        color: var(--ef-ink-gray-3);
+        flex-shrink: 0;
+        margin-top: 2px;
+        transition: color 0.12s ease, transform 0.12s ease;
+    }
+    .nav-card:hover .nav-card-arrow {
+        color: var(--ef-ink-gray-5);
+        transform: translateX(2px);
+    }
+
+    @media (max-width: 560px) {
+        .nav-cards-grid { grid-template-columns: 1fr !important; }
+    }
+</style>
+
+{% endblock %}
