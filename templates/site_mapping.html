@@ -11,7 +11,7 @@
 {% block header %}Site Mapping{% endblock %}
 
 {% block actions %}
-{% if bench_job_status not in ("finished", "failed") and status == 'ok' %}
+{% if status == 'ok' %}
 <button id="refreshBtn" class="btn btn-default">
     <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M10.5 2.5C9.5 1.3 8 0.5 6.2 0.5C3.1 0.5 0.5 3 0.5 6.2C0.5 9.4 3 11.5 6.2 11.5C8.8 11.5 11 9.9 11.8 7.5"
@@ -136,21 +136,27 @@
 
             <!-- Table header -->
             <div style="
-                    display: grid;
-                    grid-template-columns: 1fr auto;
-                    padding: var(--ef-spacing-8) var(--ef-spacing-14);
-                    border-bottom: 1px solid var(--ef-outline-gray-1);
-                    background: var(--ef-surface-gray-1);
-                ">
-                <span class="section-label">Site Domain</span>
-                <span class="section-label" style="text-align:right;">Port</span>
-            </div>
+display: grid;
+grid-template-columns: 1fr auto auto;
+gap: var(--ef-spacing-14);
+padding: var(--ef-spacing-8) var(--ef-spacing-14);
+border-bottom: 1px solid var(--ef-outline-gray-1);
+background: var(--ef-surface-gray-1);
+"> </div>
 
             {% for site, port in bench_data.sites.items() %}
-            <div class="list-item" style="font-size: var(--ef-font-size-sm);">
-                <div class="list-item-left">
+            <div style="
+        display: grid;
+        grid-template-columns: 1fr auto auto;
+        gap: var(--ef-spacing-14);
+        align-items: center;
+        padding: var(--ef-spacing-10) var(--ef-spacing-14);
+        border-bottom: 1px solid var(--ef-outline-gray-1);
+        font-size: var(--ef-font-size-sm);
+    " class="list-row">
+                <div style="display: flex; align-items: center; gap: var(--ef-spacing-8);">
                     <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg"
-                        style="color: var(--ef-ink-gray-4); flex-shrink:0;">
+                        style="color: var(--ef-ink-gray-4); flex-shrink: 0;">
                         <circle cx="6" cy="6" r="4.5" stroke="currentColor" stroke-width="1.1" />
                         <path d="M6 1.5C6 1.5 4 3.5 4 6C4 8.5 6 10.5 6 10.5" stroke="currentColor" stroke-width="1.1"
                             stroke-linecap="round" />
@@ -163,8 +169,27 @@
                         site }}</span>
                 </div>
                 <span class="badge badge-blue-subtle">{{ port }}</span>
+                <div style="display: flex; align-items: center; gap: var(--ef-spacing-6);">
+                    {% if backup_available.get(site) %}
+                    <a href="/api/site-backup/download?site={{ site }}&bench_name={{ bench_name }}" class="btn btn-dark"
+                        id="download-backup-{{ site }}"
+                        style="height: 22px; padding: 0 var(--ef-spacing-8); font-size: var(--ef-font-size-xs);">
+                        <svg width="10" height="10" viewBox="0 0 10 10" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M5 1V7M5 7L2.5 4.5M5 7L7.5 4.5" stroke="currentColor" stroke-width="1.2"
+                                stroke-linecap="round" stroke-linejoin="round" />
+                            <path d="M1 8.5H9" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
+                        </svg>
+                        Download
+                    </a>
+                    {% endif %}
+                    <button class="btn btn-dark backup-btn" data-site="{{ site }}" data-bench="{{ bench_name }}"
+                        style="height: 22px; padding: 0 var(--ef-spacing-8); font-size: var(--ef-font-size-xs);">
+                        Backup
+                    </button>
+                </div>
             </div>
             {% endfor %}
+
         </div>
         {% endfor %}
 
@@ -194,6 +219,8 @@
                 style="margin: 0; color: #1d2129; font-size: var(--ef-font-size-sm); line-height: 1.5; font-weight: 450;">
                 Ports are assigned sequentially starting from the base port configured in your bench settings.
                 Ensure your firewall allows inbound traffic on these ports.
+                Backup option provided will purge the previous backup to create a new one please ensure created backup
+                is downloaded before creating a new backup.
             </p>
         </div>
     </aside>

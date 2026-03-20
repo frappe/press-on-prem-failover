@@ -1,8 +1,10 @@
 import json
 import logging
 import os
+import shutil
 
 from jinja2 import Environment, FileSystemLoader
+
 from utils.setup_prerequisite import (
     BENCHES_DIRECTORY,
     DATABASE_BASE_DIRECTORY,
@@ -173,3 +175,33 @@ def initialize_and_start_benches(benches: dict[str, BenchInfo]):
     remove_and_run_database_container(container_ip)
     execute("systemctl reload nginx", timeout=30)
     logger.info("Reloaded nginx")
+
+
+def delete_older_backups(backup_path: str, archive_path: str):
+    """Delete older backups when starting new backup"""
+    if os.path.exists(backup_path):
+        shutil.rmtree(backup_path)
+
+    if os.path.exists(archive_path):
+        os.remove(archive_path)
+
+
+def start_backup(bench_name: str, site: str):
+    """Start site backup"""
+    logger.info(f"Starting backup for site {site} on bench {bench_name}")
+    backup_path = f"{BENCHES_DIRECTORY}/{bench_name}/sites/{site}/private/backups"
+    archive_path = (
+        f"{BENCHES_DIRECTORY}/{bench_name}/sites/{site}/private/backup.tar.gz"
+    )
+
+    delete_older_backups(backup_path, archive_path)
+
+    execute(
+        f"docker exec {bench_name} bench --site {site} backup --with-files",
+        timeout=18000,  # Large timeout for large backups
+        raises=True,
+    )
+
+    execute(f"tar -czf {archive_path} -C {backup_path} .", timeout=18000, raises=True)
+
+    logger.info(f"Finished backup for site {site} on bench {bench_name} & archived")

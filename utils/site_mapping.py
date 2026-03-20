@@ -62,3 +62,23 @@ def get_nginx_config(job_status: str) -> dict:
             return json.load(f)
 
     return {}
+
+
+def is_backup_available(bench_name: str, site: str) -> bool:
+    """Check if backup folder is populated for site"""
+    backup_path = os.path.join(
+        BENCHES_DIRECTORY, bench_name, "sites", site, "private", "backups"
+    )
+    return os.path.exists(backup_path) and len(os.listdir(backup_path)) > 0
+
+
+def get_sites_with_available_backups(nginx_config: dict) -> dict[str, bool]:
+    """Get all sites that have backup available and are present in the nginx config (mapped)"""
+    sites_with_backup = {}
+
+    for bench, site_info in nginx_config.items():
+        for sites in site_info.values():
+            for site in sites:
+                sites_with_backup[site] = is_backup_available(bench, site)
+
+    return sites_with_backup
