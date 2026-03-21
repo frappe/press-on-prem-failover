@@ -26,6 +26,7 @@ BENCHES_DIRECTORY = "/root/frappe-cloud/benches/home/frappe/benches"
 DATABASE_CONTAINER_NAME = "fc-dr-db-replica"
 DOCKER_NETWORK_NAME = "on_prem_replica_net"
 START_BENCHES_JOB_ID = "start-benches"
+SITE_BACKUP_JOB_ID = "site-backup-{}"
 DATABASE_BASE_DIRECTORY = "/root/frappe-cloud/database"
 
 
