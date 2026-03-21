@@ -10,7 +10,6 @@ function hideDownloadButton(site) {
 function showDownloadButton(site) {
   const downloadButton = document.getElementById(`download-backup-${site}`);
   if (downloadButton) {
-    console.log("Showing download button: ", site)
     downloadButton.style.display = "";
   }
 }
@@ -77,8 +76,7 @@ document.querySelectorAll(".backup-btn").forEach(btn => {
           alert(`Backup started for site: ${site}`);
         }
       } else {
-        const errorData = await response.json();
-        alert(`Failed to start backup: ${errorData.error}`);
+        alert(`Failed to start backup: ${data.error}`);
       }
     } catch (err) {
       console.error("Failed to start backup:", err);

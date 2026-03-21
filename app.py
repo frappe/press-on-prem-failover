@@ -79,7 +79,7 @@ def site_mapping_page():
         bench_job_status = "not started"
 
     nginx_config = get_nginx_config(bench_job_status)
-    backup_available = get_sites_with_available_backups(nginx_config)
+    backup_available = get_sites_with_available_backups(nginx_config, queue=queue)
 
     return render_template(
         "site_mapping.html",
@@ -100,7 +100,7 @@ def job_status_api():
         bench_job_status = "not started"
 
     nginx_config = get_nginx_config(bench_job_status)
-    backup_available = get_sites_with_available_backups(nginx_config)
+    backup_available = get_sites_with_available_backups(nginx_config, queue=queue)
 
     return {"status": bench_job_status, "backup_available": backup_available}
 
@@ -153,12 +153,6 @@ def site_backup_api():
     if not site or not bench_name:
         return {"error": "Site name and bench name is required"}, 400
 
-    registry = StartedJobRegistry(queue=queue)
-
-    for job in registry.get_job_ids():
-        if SITE_BACKUP_JOB_ID.replace("-{}", "") in job:
-            return {"status": "Only one backup can run at a time"}, 400
-
     try:
         existing_job = Job.fetch(
             SITE_BACKUP_JOB_ID.format(site), connection=queue.connection
@@ -167,6 +161,12 @@ def site_backup_api():
             return {"status": "already running"}, 202
     except NoSuchJobError:
         pass
+
+    registry = StartedJobRegistry(queue=queue)
+
+    for job in registry.get_job_ids():
+        if SITE_BACKUP_JOB_ID.replace("-{}", "") in job:
+            return {"error": "Only one backup can run at a time"}, 400
 
     queue.enqueue(
         start_backup,
