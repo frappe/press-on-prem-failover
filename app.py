@@ -15,6 +15,7 @@ from utils.setup_prerequisite import (
     SITE_BACKUP_JOB_ID,
     START_BENCHES_JOB_ID,
     check_server_status,
+    site_backup_job_id,
 )
 from utils.site_mapping import get_nginx_config, get_sites_with_available_backups
 
@@ -155,7 +156,7 @@ def site_backup_api():
 
     try:
         existing_job = Job.fetch(
-            SITE_BACKUP_JOB_ID.format(site), connection=queue.connection
+            site_backup_job_id(site), connection=queue.connection
         )
         if existing_job.get_status().value in ("queued", "started"):
             return {"status": "already running"}, 202
@@ -172,12 +173,12 @@ def site_backup_api():
         start_backup,
         site=site,
         bench_name=bench_name,
-        job_id=SITE_BACKUP_JOB_ID.format(site),
+        job_id=site_backup_job_id(site),
     )
 
     return {
         "status": "queued",
-        "job_id": SITE_BACKUP_JOB_ID.format(site),
+        "job_id": site_backup_job_id(site),
     }, 202
 
 
