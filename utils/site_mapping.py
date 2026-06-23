@@ -9,7 +9,7 @@ from rq.job import Job
 
 from utils.types import BenchSiteMapping
 
-from .setup_prerequisite import BENCHES_DIRECTORY, SITE_BACKUP_JOB_ID
+from .setup_prerequisite import BENCHES_DIRECTORY, site_backup_job_id
 
 if typing.TYPE_CHECKING:
     from rq import Queue
@@ -81,7 +81,7 @@ def is_backup_available(bench_name: str, site: str, queue: Queue) -> bool:
     has_archived_path = os.path.isfile(backup_path)
     try:
         job_status = (
-            Job.fetch(SITE_BACKUP_JOB_ID.format(site), connection=queue.connection)
+            Job.fetch(site_backup_job_id(site), connection=queue.connection)
             .get_status()
             .value
         )

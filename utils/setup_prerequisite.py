@@ -30,6 +30,11 @@ SITE_BACKUP_JOB_ID = "site-backup-{}"
 DATABASE_BASE_DIRECTORY = "/root/frappe-cloud/database"
 
 
+def site_backup_job_id(site: str) -> str:
+    # RQ job ids allow only letters, numbers, _ and -; site names contain dots
+    return SITE_BACKUP_JOB_ID.format(site.replace(".", "-"))
+
+
 @dataclass
 class ServerStatus:
     services: dict[str, bool]
