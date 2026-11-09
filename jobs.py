@@ -10,6 +10,7 @@ from utils.setup_prerequisite import (
     DATABASE_BASE_DIRECTORY,
     DATABASE_CONTAINER_NAME,
     DOCKER_NETWORK_NAME,
+    database_container_image,
     execute,
 )
 from utils.site_mapping import get_port_mapping_for_sites
@@ -114,7 +115,7 @@ def update_database_host(bench_name: str, container_ip: str):
     logger.info(f"Updated database host in {common_site_config_path} to {container_ip}")
 
 
-def remove_and_run_database_container(container_ip: str):
+def remove_and_run_database_container(container_ip: str, image: str):
     """Remove and run the database container to remove readonly flag"""
     # Remove database container
     execute(f"docker rm -f {DATABASE_CONTAINER_NAME}", timeout=30)
@@ -126,7 +127,8 @@ def remove_and_run_database_container(container_ip: str):
         f"--network {DOCKER_NETWORK_NAME} "
         f"--ip {container_ip} "  # The one we just fetched for the bench to ensure it remains the same
         f"-v {DATABASE_BASE_DIRECTORY}/var/lib/mysql:/var/lib/mysql "
-        "mariadb:10.6 "
+        # Same image as the replica: MariaDB cannot open data files of a newer version
+        f"{image} "
         "--server-id=9999 "
         "--bind-address=0.0.0.0 "
         "--innodb-file-per-table=1 "
@@ -140,6 +142,13 @@ def remove_and_run_database_container(container_ip: str):
 def initialize_and_start_benches(benches: dict[str, BenchInfo]):
     """Extract assets from image and start all available benches in the background"""
     logger.info("Starting initialization and deployment of benches")
+    # Check before any change, so a failed failover does not leave benches without a database
+    database_image = database_container_image()
+    if not database_image:
+        raise RuntimeError(
+            f"{DATABASE_CONTAINER_NAME} is not running. No bench was started."
+        )
+
     generate_bench_nginx_configs(benches=benches)
 
     format = f"{{{{.NetworkSettings.Networks.{DOCKER_NETWORK_NAME}.IPAddress}}}}"
@@ -172,7 +181,7 @@ def initialize_and_start_benches(benches: dict[str, BenchInfo]):
                 bench_name, port_offset=port_offset, image=bench_info["image"]
             )
 
-    remove_and_run_database_container(container_ip)
+    remove_and_run_database_container(container_ip, database_image)
     execute("systemctl reload nginx", timeout=30)
     logger.info("Reloaded nginx")
 
