@@ -151,12 +151,7 @@ def check_server_status() -> ServerStatus:
     benches, malformed_benches = (
         active_benches(BENCHES_DIRECTORY) if bench_ok else ({}, [])
     )
-    is_database_container_running = (
-        execute(
-            f"docker ps --filter 'name={DATABASE_CONTAINER_NAME}' --filter 'network={DOCKER_NETWORK_NAME}' --format '{{{{.Names}}}}'"
-        )
-        == DATABASE_CONTAINER_NAME
-    )
+    is_database_container_running = database_container_image() is not None
     services["database"] = is_database_container_running
     status = (
         "ok"
@@ -167,3 +162,19 @@ def check_server_status() -> ServerStatus:
         else "error"
     )
     return ServerStatus(services, benches, malformed_benches, bench_ok, status)
+
+
+def database_container_image() -> str | None:
+    """Return the image of the database container, or None if it is not running."""
+    # status=running leaves out a container that crash-loops ("restarting")
+    output = execute(
+        f"docker ps --filter 'name={DATABASE_CONTAINER_NAME}' "
+        f"--filter 'network={DOCKER_NETWORK_NAME}' --filter 'status=running' "
+        "--format '{{.Names}} {{.Image}}'",
+        raises=False,
+    )
+    for line in (output or "").splitlines():
+        name, image = line.split()
+        if name == DATABASE_CONTAINER_NAME:
+            return image
+    return None
